@@ -1,6 +1,9 @@
 package school.sptech.twilio_microservice.config;
 
+import org.springframework.amqp.core.Binding;
+import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.Queue;
+import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.rabbit.config.SimpleRabbitListenerContainerFactory;
 import org.springframework.amqp.rabbit.connection.ConnectionFactory;
 import org.springframework.amqp.support.converter.Jackson2JsonMessageConverter;
@@ -10,20 +13,28 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 public class RabbitMQConfig {
-    // Descrição: Nome da fila que o monolito de produtos enviará as mensagens para o Twilio consumir.
-    public static final String TWILIO_QUEUE = "twilio-queue";
+    @Bean
+    public TopicExchange topicExchange() {
+        String exchangeName = "notificacoes.topic";
+        return new TopicExchange(exchangeName);
+    }
 
     @Bean
-    public Queue twilioQueue() {
-        // Descrição: Cria a fila no RabbitMQ. 'true' indica que a fila é durável (sobrevive a reinicializações).
-        return new Queue(TWILIO_QUEUE, true);
+    public Queue queue() {
+        String queueName = "notificacoes.master.queue";
+        return new Queue(queueName);
     }
 
     @Bean
     public MessageConverter jsonMessageConverter() {
-        // Descrição: Define o conversor de mensagens, que transforma o objeto Java (TwilioRequest) em JSON
-        // antes de enviar, e de volta para objeto Java ao receber.
         return new Jackson2JsonMessageConverter();
+    }
+
+    @Bean
+    public Binding javamailBinding(Queue queue, TopicExchange topicExchange) {
+        return BindingBuilder.bind(queue)
+                .to(topicExchange)
+                .with("evento.twilio.#");
     }
 
     @Bean
